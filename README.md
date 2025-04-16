@@ -32,6 +32,7 @@ Perfecto, aquí tienes una descripción completa del proyecto **RiftCat** que pu
 
 ### 📁 Arquitectura de Carpetas
 
+```bash
 RiftCat/
 │
 ├── app/
@@ -51,6 +52,9 @@ RiftCat/
 ├── docker-compose.yml
 └── README.md
 ```
+📄 [Ver arquitectura del sistema](docs/README_ARCHITECTURE.md)
+
+![Arquitectura del Sistema](docs/architecture.png)
 
 
 ---
