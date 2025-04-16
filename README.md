@@ -1,10 +1,10 @@
-### 🧠 Proyecto: **RiftCat**
+###  **RiftCat**
 
 **RiftCat** es una infraestructura escalable diseñada para la recolección masiva e inteligente de datos de partidas de *League of Legends*, usando la API oficial de Riot. El sistema está pensado para operar de forma autónoma, viral y distribuida, explorando de manera progresiva todo el ecosistema de invocadores a partir de nodos semilla.
 
 ---
 
-### 🎯 Objetivos del Proyecto
+###  Objetivos del Proyecto
 
 - Construir un **crawler inteligente y viral** que expanda su alcance entre perfiles conectados por partidas.
 - Crear un **grafo dinámico de invocadores**, persistente y actualizable.
@@ -13,7 +13,7 @@
 
 ---
 
-### ⚙️ Tecnologías
+### Tecnologías
 
 - **Lenguaje**: Python
 - **API**: Riot Games Developer API
@@ -26,7 +26,7 @@
 
 ---
 
-### 📁 Arquitectura de Carpetas
+###  Arquitectura de Carpetas
 
 RiftCat/
 │
