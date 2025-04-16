@@ -1,1 +1,1 @@
-# MeowMiner
+# RiftCat-Crawler
