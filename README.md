@@ -52,6 +52,7 @@ RiftCat/
 └── README.md
 ```
 
+
 ---
 
 ### 🧩 Características Clave
