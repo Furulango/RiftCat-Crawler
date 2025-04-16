@@ -26,8 +26,9 @@
 
 ---
 
-###  Arquitectura de Carpetas
+### 📁 Arquitectura de Carpetas
 
+```bash
 RiftCat/
 │
 ├── app/
@@ -47,6 +48,7 @@ RiftCat/
 ├── docker-compose.yml
 └── README.md
 ```
+
 
 ---
 
