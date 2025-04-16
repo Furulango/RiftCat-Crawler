@@ -48,7 +48,9 @@ RiftCat/
 ├── docker-compose.yml
 └── README.md
 ```
+![Arquitectura del Sistema](docs/architecture.png)
 
+📄 [Ver arquitectura del sistema](docs/README_ARCHITECTURE.md)
 
 ---
 
