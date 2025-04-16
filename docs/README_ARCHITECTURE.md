@@ -1,7 +1,5 @@
 # 🧠 RiftCat – Arquitectura del Sistema
 
-Este documento describe el flujo técnico del sistema RiftCat, un crawler viral de partidas de League of Legends.
-
 ---
 
 ## 📌 Componentes Principales
