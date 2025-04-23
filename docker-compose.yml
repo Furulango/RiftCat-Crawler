@@ -1,0 +1,141 @@
+version: '3.8'
+
+services:
+  # API service
+  api:
+    build: .
+    container_name: riftcat_api
+    command: uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --reload
+    volumes:
+      - .:/app
+      - ./data:/app/data
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+    networks:
+      - riftcat_network
+    restart: unless-stopped
+
+  # Crawler service
+  crawler:
+    build: .
+    container_name: riftcat_crawler
+    command: python -m app.crawler.controller
+    volumes:
+      - .:/app
+      - ./data:/app/data
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+    networks:
+      - riftcat_network
+    restart: unless-stopped
+
+  # Worker for match fetching
+  worker_matches:
+    build: .
+    container_name: riftcat_worker_matches
+    command: python -m app.workers.match_fetcher
+    volumes:
+      - .:/app
+      - ./data:/app/data
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+    networks:
+      - riftcat_network
+    restart: unless-stopped
+
+  # Worker for PUUID expansion
+  worker_puuids:
+    build: .
+    container_name: riftcat_worker_puuids
+    command: python -m app.workers.puuid_expander
+    volumes:
+      - .:/app
+      - ./data:/app/data
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - REDIS_URL=redis://redis:6379/0
+    networks:
+      - riftcat_network
+    restart: unless-stopped
+
+  # Database service
+  db:
+    image: postgres:14-alpine
+    container_name: riftcat_db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    ports:
+      - "5432:5432"
+    env_file:
+      - .env
+    environment:
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_DB=${POSTGRES_DB}
+    networks:
+      - riftcat_network
+    restart: unless-stopped
+
+  # Redis service
+  redis:
+    image: redis:7-alpine
+    container_name: riftcat_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - riftcat_network
+    restart: unless-stopped
+
+  # PgAdmin for database management (optional)
+  pgadmin:
+    image: dpage/pgadmin4
+    container_name: riftcat_pgadmin
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=${PGADMIN_EMAIL:-admin@riftcat.com}
+      - PGADMIN_DEFAULT_PASSWORD=${PGADMIN_PASSWORD:-admin}
+    ports:
+      - "5050:80"
+    depends_on:
+      - db
+    networks:
+      - riftcat_network
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
+  redis_data:
+
+networks:
+  riftcat_network:
+    driver: bridge
