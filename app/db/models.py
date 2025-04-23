@@ -168,7 +168,7 @@ class MatchTimeline(Base):
     match_id = Column(String(64), ForeignKey('matches.id'), primary_key=True)
     
     # Timeline data
-    metadata = Column(JSON)
+    timeline_metadata = Column(JSON)  # Cambiado de 'metadata' a 'timeline_metadata' para evitar conflicto
     frames = Column(JSON)  # Timeline frames with events and participant frames
     
     # Timestamps

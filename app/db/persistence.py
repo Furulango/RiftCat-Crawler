@@ -397,13 +397,13 @@ class MatchRepository:
             
             if timeline:
                 # Update existing timeline
-                timeline.metadata = timeline_data.get('metadata', {})
+                timeline.timeline_metadata = timeline_data.get('metadata', {})
                 timeline.frames = timeline_data.get('info', {}).get('frames', [])
             else:
                 # Create new timeline
                 timeline = MatchTimeline(
                     match_id=match_id,
-                    metadata=timeline_data.get('metadata', {}),
+                    timeline_metadata=timeline_data.get('metadata', {}),
                     frames=timeline_data.get('info', {}).get('frames', [])
                 )
                 db.add(timeline)

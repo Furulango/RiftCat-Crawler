@@ -1,7 +1,7 @@
 import os
 from typing import Dict, List, Optional, Any
-from pydantic import BaseSettings, validator
-
+from pydantic_settings import BaseSettings
+from pydantic import field_validator
 
 class Settings(BaseSettings):
     """Application settings with environment variable support."""
@@ -58,7 +58,8 @@ class Settings(BaseSettings):
         "vn2": "sea",
     }
     
-    @validator("DATABASE_URL", pre=True)
+    @field_validator("DATABASE_URL", mode="before")
+    @classmethod
     def validate_database_url(cls, v: Optional[str]) -> str:
         """Validate and construct the database URL if not provided."""
         if isinstance(v, str):
@@ -73,11 +74,20 @@ class Settings(BaseSettings):
         
         return f"postgresql://{user}:{password}@{host}:{port}/{database}"
     
-    class Config:
-        """Pydantic configuration."""
-        env_file = ".env"
-        env_file_encoding = "utf-8"
-        case_sensitive = True
+    @field_validator("CRAWLER_QUEUE_TYPES", mode="before")
+    @classmethod
+    def parse_queue_types(cls, v):
+        """Parse queue types from string if needed."""
+        if isinstance(v, str):
+            return [int(x.strip()) for x in v.split(",")]
+        return v
+    
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "case_sensitive": True,
+        "extra": "ignore"  # Ignora campos extras en el archivo .env
+    }
 
 
 # Create global settings instance
