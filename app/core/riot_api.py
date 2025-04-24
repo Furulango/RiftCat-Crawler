@@ -35,7 +35,7 @@ REGION_TO_PLATFORM = {
 }
 
 # APIs that use regional platform URLs
-PLATFORM_APIS = ["match/v5"]
+PLATFORM_APIS = ["match/v5", "riot/account/v1"]
 
 
 class RateLimiter:
@@ -151,6 +151,10 @@ class RiotAPI:
         if uses_platform:
             # Get platform corresponding to the region
             platform = REGION_TO_PLATFORM.get(region, "americas")
+            
+            # Special handling for account API
+            if api_path.startswith("riot/account/v1"):
+                return f"https://{platform}.api.riotgames.com/"
             return f"https://{platform}.api.riotgames.com/lol/"
         else:
             # Use region-specific URL
@@ -255,8 +259,43 @@ class RiotAPI:
     
     # ========== Methods for Specific Endpoints ==========
     
+    async def get_summoner_by_name_tag(
+        self, 
+        game_name: str, 
+        tag_line: str, 
+        region: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Gets summoner data by game name and tag line.
+        
+        Args:
+            game_name: Summoner's game name
+            tag_line: Summoner's tag line (without #)
+            region: Region code
+            
+        Returns:
+            Summoner data
+        """
+        # First get the PUUID using the Riot Account API
+        endpoint = f"riot/account/v1/accounts/by-riot-id/{game_name}/{tag_line}"
+        account_data = await self._request("GET", endpoint, region=region, api_path="riot/account/v1")
+        
+        if not account_data or 'puuid' not in account_data:
+            logger.warning(f"Could not find account for {game_name}#{tag_line}")
+            return {}
+        
+        # Then get the summoner data using the PUUID
+        puuid = account_data.get('puuid')
+        summoner_data = await self.get_summoner_by_puuid(puuid, region)
+        
+        # Enrich summoner data with game name and tag line
+        if summoner_data:
+            summoner_data['gameName'] = game_name
+            summoner_data['tagLine'] = tag_line
+        
+        return summoner_data
+    
     async def get_summoner_by_name(self, summoner_name: str, region: Optional[str] = None) -> Dict[str, Any]:
-        """Gets summoner data by name.
+        """Gets summoner data by name (DEPRECATED - use get_summoner_by_name_tag).
         
         Args:
             summoner_name: Summoner's name
@@ -265,8 +304,14 @@ class RiotAPI:
         Returns:
             Summoner data
         """
-        endpoint = f"summoner/v4/summoners/by-name/{summoner_name}"
-        return await self._request("GET", endpoint, region=region, api_path="summoner/v4")
+        # Reject if no tag is provided
+        if '#' not in summoner_name:
+            logger.error(f"Invalid summoner format: {summoner_name}. Must use 'name#tag' format.")
+            return {}
+        
+        # Parse the name and tag
+        game_name, tag_line = summoner_name.split('#', 1)
+        return await self.get_summoner_by_name_tag(game_name, tag_line, region)
     
     async def get_summoner_by_puuid(self, puuid: str, region: Optional[str] = None) -> Dict[str, Any]:
         """Gets summoner data by PUUID.

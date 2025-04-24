@@ -18,13 +18,21 @@ class SummonerRepository:
     """Repository for Summoner operations."""
     
     @staticmethod
-    def create_or_update(db: Session, summoner_data: Dict[str, Any], region: str) -> Optional[Summoner]:
+    def create_or_update(
+        db: Session, 
+        summoner_data: Dict[str, Any], 
+        region: str,
+        game_name: str,
+        tag_line: str
+    ) -> Optional[Summoner]:
         """Create or update a summoner.
         
         Args:
             db: Database session
             summoner_data: Summoner data from Riot API
             region: Summoner's region
+            game_name: Game name from Riot ID
+            tag_line: Tag line from Riot ID
             
         Returns:
             Created or updated summoner
@@ -36,8 +44,12 @@ class SummonerRepository:
             if summoner:
                 # Update existing summoner
                 for key, value in summoner_data.items():
-                    if hasattr(summoner, key):
+                    if hasattr(summoner, key) and key not in ['gameName', 'tagLine']:
                         setattr(summoner, key, value)
+                
+                # Actualizar campos de Riot ID
+                summoner.game_name = summoner_data.get('gameName', game_name)
+                summoner.tag_line = summoner_data.get('tagLine', tag_line)
                 
                 summoner.region = region
                 summoner.last_updated = datetime.utcnow()
@@ -51,6 +63,8 @@ class SummonerRepository:
                     profile_icon_id=summoner_data.get('profileIconId'),
                     revision_date=summoner_data.get('revisionDate'),
                     summoner_level=summoner_data.get('summonerLevel'),
+                    game_name=summoner_data.get('gameName', game_name),
+                    tag_line=summoner_data.get('tagLine', tag_line),
                     region=region,
                     processing_status=ProcessingStatus.PENDING,
                     processing_depth=0,
@@ -86,15 +100,39 @@ class SummonerRepository:
         
         Args:
             db: Database session
-            name: Summoner's name
+            name: Summoner's name with tag (format: name#tag)
             region: Summoner's region
             
         Returns:
             Summoner if found, None otherwise
         """
+        # Verificar que el formato sea correcto
+        if '#' not in name:
+            logger.error(f"Invalid summoner format: {name}. Must use 'name#tag' format.")
+            return None
+            
+        game_name, tag_line = name.split('#', 1)
         return db.query(Summoner).filter(
-            Summoner.name == name, 
+            Summoner.game_name == game_name,
+            Summoner.tag_line == tag_line,
             Summoner.region == region
+        ).first()
+    
+    @staticmethod
+    def get_by_riot_id(db: Session, game_name: str, tag_line: str) -> Optional[Summoner]:
+        """Get a summoner by Riot ID.
+        
+        Args:
+            db: Database session
+            game_name: Game name
+            tag_line: Tag line
+            
+        Returns:
+            Summoner if found, None otherwise
+        """
+        return db.query(Summoner).filter(
+            Summoner.game_name == game_name,
+            Summoner.tag_line == tag_line
         ).first()
     
     @staticmethod
@@ -115,7 +153,10 @@ class SummonerRepository:
         """
         return db.query(Summoner).filter(
             Summoner.processing_status == ProcessingStatus.PENDING,
-            Summoner.processing_depth <= max_depth
+            Summoner.processing_depth <= max_depth,
+            # Asegurar que tengan Riot ID
+            Summoner.game_name.isnot(None),
+            Summoner.tag_line.isnot(None)
         ).order_by(Summoner.processing_depth.asc()).limit(limit).all()
     
     @staticmethod
@@ -153,6 +194,11 @@ class SummonerRepository:
             summoner = db.query(Summoner).filter(Summoner.id == summoner_id).first()
             if not summoner:
                 logger.warning(f"Summoner not found for status update: {summoner_id}")
+                return False
+                
+            # Verificar que el summoner tenga Riot ID
+            if not summoner.game_name or not summoner.tag_line:
+                logger.warning(f"Summoner {summoner_id} does not have a valid Riot ID")
                 return False
             
             # Apply updates
@@ -194,6 +240,15 @@ class SummonerRepository:
             
             if not source or not target:
                 logger.warning(f"Cannot create relation: summoner not found ({source_id} -> {target_id})")
+                return False
+                
+            # Verificar que ambos tengan Riot ID
+            if not source.game_name or not source.tag_line:
+                logger.warning(f"Source summoner {source_id} does not have a valid Riot ID")
+                return False
+                
+            if not target.game_name or not target.tag_line:
+                logger.warning(f"Target summoner {target_id} does not have a valid Riot ID")
                 return False
             
             # Check if relation exists
@@ -298,15 +353,26 @@ class MatchRepository:
                 if not puuid:
                     continue
                 
+                # Check for game name and tag in participant data
+                game_name = participant.get('riotIdGameName')
+                tag_line = participant.get('riotIdTagline')
+                
+                # Verificar que se tenga información de Riot ID
+                if not game_name or not tag_line:
+                    logger.warning(f"Participant in match {match_id} does not have valid Riot ID. Skipping.")
+                    continue
+                
                 # Get or create summoner (minimal info)
                 summoner = db.query(Summoner).filter(Summoner.puuid == puuid).first()
                 if not summoner:
-                    # Create placeholder summoner to be filled later
+                    # Create placeholder summoner with required Riot ID info
                     summoner = Summoner(
                         id=participant.get('summonerId', f"placeholder_{puuid[:8]}"),
                         puuid=puuid,
                         account_id=participant.get('accountId', f"placeholder_{puuid[:8]}"),
                         name=participant.get('summonerName', 'Unknown'),
+                        game_name=game_name,
+                        tag_line=tag_line,
                         profile_icon_id=0,
                         revision_date=0,
                         summoner_level=0,
@@ -317,6 +383,10 @@ class MatchRepository:
                     )
                     db.add(summoner)
                     db.flush()  # Get ID without committing
+                elif not summoner.game_name or not summoner.tag_line:
+                    # Update summoner with Riot ID if missing
+                    summoner.game_name = game_name
+                    summoner.tag_line = tag_line
                 
                 # Create or update match-summoner relationship
                 match_summoner = db.query(MatchSummoner).filter(
@@ -328,7 +398,8 @@ class MatchRepository:
                 stats = {k: v for k, v in participant.items() if k not in [
                     'championId', 'championName', 'championLevel', 'teamId',
                     'teamPosition', 'role', 'kills', 'deaths', 'assists', 'win',
-                    'participantId', 'puuid', 'summonerId', 'summonerName'
+                    'participantId', 'puuid', 'summonerId', 'summonerName',
+                    'riotIdGameName', 'riotIdTagline'
                 ]}
                 
                 if match_summoner:

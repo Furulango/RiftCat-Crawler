@@ -112,7 +112,7 @@ services:
     ports:
       - "6379:6379"
     volumes:
-      - redis_data:/data
+      - redis_data:/data...............
     networks:
       - riftcat_network
     restart: unless-stopped

@@ -47,6 +47,12 @@ async def get_summoners(
     """Get summoners with pagination and filtering."""
     query = db.query(Summoner)
     
+    # Filtrar solo invocadores con Riot ID válido
+    query = query.filter(
+        Summoner.game_name.isnot(None),
+        Summoner.tag_line.isnot(None)
+    )
+    
     # Apply filters
     if status:
         try:
@@ -75,7 +81,7 @@ async def get_summoners(
             {
                 "id": s.id,
                 "puuid": s.puuid,
-                "name": s.name,
+                "riot_id": f"{s.game_name}#{s.tag_line}",
                 "region": s.region,
                 "level": s.summoner_level,
                 "status": s.processing_status.value,
@@ -98,10 +104,14 @@ async def get_summoner(
     if not summoner:
         raise HTTPException(status_code=404, detail="Summoner not found")
     
+    # Verificar que tenga Riot ID
+    if not summoner.game_name or not summoner.tag_line:
+        raise HTTPException(status_code=400, detail="Summoner does not have a valid Riot ID")
+    
     return {
         "id": summoner.id,
         "puuid": summoner.puuid,
-        "name": summoner.name,
+        "riot_id": f"{summoner.game_name}#{summoner.tag_line}",
         "region": summoner.region,
         "profile_icon_id": summoner.profile_icon_id,
         "revision_date": summoner.revision_date,
@@ -115,20 +125,26 @@ async def get_summoner(
 
 @router.post("/summoners/add", response_model=Dict[str, Any])
 async def add_summoner(
-    name: str,
+    name_with_tag: str,
     region: str,
     ctrl: CrawlerController = Depends(get_controller)
 ):
-    """Add a summoner to the crawl list."""
-    summoner = await ctrl.add_seed_summoner(name, region)
+    """Add a summoner to the crawl list using Riot ID."""
+    if '#' not in name_with_tag:
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Invalid format: {name_with_tag}. Must use 'name#tag' format."
+        )
+        
+    summoner = await ctrl.add_seed_summoner(name_with_tag, region)
     
     if not summoner:
-        raise HTTPException(status_code=404, detail=f"Summoner {name} not found in region {region}")
+        raise HTTPException(status_code=404, detail=f"Summoner {name_with_tag} not found in region {region}")
     
     return {
         "id": summoner.id,
         "puuid": summoner.puuid,
-        "name": summoner.name,
+        "riot_id": f"{summoner.game_name}#{summoner.tag_line}",
         "region": summoner.region,
         "level": summoner.summoner_level,
         "status": summoner.processing_status.value,
@@ -147,13 +163,17 @@ async def get_summoner_matches(
     if not summoner:
         raise HTTPException(status_code=404, detail="Summoner not found")
     
+    # Verificar que tenga Riot ID
+    if not summoner.game_name or not summoner.tag_line:
+        raise HTTPException(status_code=400, detail="Summoner does not have a valid Riot ID")
+    
     # Get matches
     matches = MatchRepository.get_matches_by_summoner(db, summoner_id, limit)
     
     return {
         "summoner": {
             "id": summoner.id,
-            "name": summoner.name,
+            "riot_id": f"{summoner.game_name}#{summoner.tag_line}",
             "region": summoner.region
         },
         "matches": [
@@ -181,19 +201,22 @@ async def get_summoner_neighbors(
     """Get neighbors of a summoner in the relationship graph."""
     neighbors = await graph_manager.get_neighbors(summoner_id, depth)
     
+    # Filtrar vecinos sin Riot ID válido
+    valid_neighbors = [n for n in neighbors if n.game_name and n.tag_line]
+    
     return {
         "summoner_id": summoner_id,
         "depth": depth,
         "neighbors": [
             {
                 "id": n.id,
-                "name": n.name,
+                "riot_id": f"{n.game_name}#{n.tag_line}",
                 "region": n.region,
                 "level": n.summoner_level
             }
-            for n in neighbors
+            for n in valid_neighbors
         ],
-        "total": len(neighbors)
+        "total": len(valid_neighbors)
     }
 
 
@@ -258,6 +281,12 @@ async def get_match(
         MatchSummoner.match_id == match_id
     ).all()
     
+    # Filter participants with valid Riot ID
+    valid_participants = []
+    for p in participants:
+        if p.summoner and p.summoner.game_name and p.summoner.tag_line:
+            valid_participants.append(p)
+    
     # Get timeline if requested
     timeline = None
     if include_timeline and match.is_timeline_fetched:
@@ -275,7 +304,7 @@ async def get_match(
         "participants": [
             {
                 "summoner_id": p.summoner_id,
-                "summoner_name": p.summoner.name,
+                "riot_id": f"{p.summoner.game_name}#{p.summoner.tag_line}",
                 "champion_id": p.champion_id,
                 "champion_name": p.champion_name,
                 "team_id": p.team_id,
@@ -286,7 +315,7 @@ async def get_match(
                 "win": p.win,
                 "stats": p.stats
             }
-            for p in participants
+            for p in valid_participants
         ],
         "timeline": {
             "frames": timeline.frames if timeline else None
@@ -367,49 +396,61 @@ async def find_paths(
     db: Session = Depends(get_db_async)
 ):
     """Find paths between two summoners in the graph."""
-    # Check if summoners exist
+    # Check if summoners exist and have valid Riot IDs
     source = db.query(Summoner).filter(Summoner.id == source_id).first()
     target = db.query(Summoner).filter(Summoner.id == target_id).first()
     
     if not source or not target:
         raise HTTPException(status_code=404, detail="Source or target summoner not found")
     
+    # Verificar Riot IDs
+    if not source.game_name or not source.tag_line:
+        raise HTTPException(status_code=400, detail="Source summoner does not have a valid Riot ID")
+        
+    if not target.game_name or not target.tag_line:
+        raise HTTPException(status_code=400, detail="Target summoner does not have a valid Riot ID")
+    
     paths = await graph_manager.find_paths(source_id, target_id, max_depth)
     
-    # Get summoner details for paths
+    # Get summoner details for paths and filter invalid Riot IDs
     path_details = []
     summoner_cache = {source.id: source, target.id: target}
     
     for path in paths:
         path_with_details = []
+        valid_path = True
+        
         for summoner_id in path:
             if summoner_id not in summoner_cache:
                 summoner_cache[summoner_id] = db.query(Summoner).filter(Summoner.id == summoner_id).first()
             
             summoner = summoner_cache.get(summoner_id)
-            if summoner:
+            if summoner and summoner.game_name and summoner.tag_line:
                 path_with_details.append({
                     "id": summoner.id,
-                    "name": summoner.name,
+                    "riot_id": f"{summoner.game_name}#{summoner.tag_line}",
                     "region": summoner.region
                 })
             else:
-                path_with_details.append({"id": summoner_id, "name": "Unknown", "region": "Unknown"})
+                # Si hay un invocador sin Riot ID válido, saltar el camino completo
+                valid_path = False
+                break
         
-        path_details.append(path_with_details)
+        if valid_path:
+            path_details.append(path_with_details)
     
     return {
         "source": {
             "id": source.id,
-            "name": source.name,
+            "riot_id": f"{source.game_name}#{source.tag_line}",
             "region": source.region
         },
         "target": {
             "id": target.id,
-            "name": target.name,
+            "riot_id": f"{target.game_name}#{target.tag_line}",
             "region": target.region
         },
         "max_depth": max_depth,
-        "paths_count": len(paths),
+        "paths_count": len(path_details),
         "paths": path_details
     }

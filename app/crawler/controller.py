@@ -72,15 +72,25 @@ class CrawlerController:
         """Add a seed summoner to start the crawl.
         
         Args:
-            summoner_name: Summoner name
+            summoner_name: Summoner name (must be in the format "name#tag")
             region: Region code
             
         Returns:
             Added summoner or None if failed
         """
         try:
-            # Get summoner data from API
-            summoner_data = await self.riot_api.get_summoner_by_name(summoner_name, region)
+            # Verificar que el formato sea correcto (name#tag)
+            if '#' not in summoner_name:
+                logger.error(f"Invalid summoner format: {summoner_name}. Must use 'name#tag' format.")
+                return None
+            
+            # Extraer game_name y tag_line
+            game_name, tag_line = summoner_name.split('#', 1)
+            logger.info(f"Adding seed summoner: {game_name}#{tag_line} in {region}")
+            
+            # Get summoner data from API using Riot ID
+            summoner_data = await self.riot_api.get_summoner_by_name_tag(game_name, tag_line, region)
+            
             if not summoner_data:
                 logger.error(f"Failed to get summoner data for {summoner_name} in {region}")
                 return None
@@ -88,12 +98,17 @@ class CrawlerController:
             # Add to database
             db = SessionLocal()
             try:
-                summoner = SummonerRepository.create_or_update(db, summoner_data, region)
+                # Crear o actualizar en la base de datos
+                summoner = SummonerRepository.create_or_update(
+                    db, summoner_data, region, game_name=game_name, tag_line=tag_line
+                )
+                
                 if not summoner:
                     logger.error(f"Failed to add seed summoner {summoner_name}")
                     return None
                 
-                logger.info(f"Added seed summoner: {summoner.name} ({summoner.id})")
+                display_name = f"{summoner.game_name}#{summoner.tag_line}"
+                logger.info(f"Added seed summoner: {display_name} ({summoner.id})")
                 return summoner
             
             finally:
@@ -151,6 +166,12 @@ class CrawlerController:
             ).first()
             current_depth = deepest.processing_depth if deepest else 0
             
+            # Count summoners with and without Riot ID
+            with_riot_id = db.query(Summoner).filter(
+                Summoner.game_name.isnot(None),
+                Summoner.tag_line.isnot(None)
+            ).count()
+            
             # Update state in database
             status_message = f"Running: {self.running}, Completed: {completed}, Pending: {pending}"
             CrawlerStateRepository.update_metrics(
@@ -169,6 +190,7 @@ class CrawlerController:
                 "pending": pending,
                 "processing": processing,
                 "failed": failed,
+                "with_riot_id": with_riot_id, 
                 "current_depth": current_depth,
                 "running": self.running,
                 "timestamp": datetime.utcnow().isoformat()
@@ -318,10 +340,10 @@ async def main():
     
     # Add seed summoners
     seeds = [
-        ("Faker", "kr"),
-        ("Hide on bush", "kr"),
-        ("Bjergsen", "na1"),
-        ("Rekkles", "euw1")
+        ("Faker#KR1", "kr"),
+        ("Hide on bush#KR1", "kr"),
+        ("Bjergsen#NA1", "na1"),
+        ("Rekkles#EUW", "euw1")
     ]
     
     await controller.add_seed_summoners(seeds)

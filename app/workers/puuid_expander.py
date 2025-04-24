@@ -47,10 +47,13 @@ class PuuidExpander:
         logger.info("Discovering new summoners from matches")
         
         try:
-            # Find placeholder summoners (with minimal info)
+            # Encontrar invocadores placeholder que necesitan completar su información
             placeholders = db.query(Summoner).filter(
                 Summoner.summoner_level == 0,  # Placeholder indication
-                Summoner.processing_status == ProcessingStatus.PENDING
+                Summoner.processing_status == ProcessingStatus.PENDING,
+                # Asegurarse de que tengan información de Riot ID
+                Summoner.game_name.isnot(None),
+                Summoner.tag_line.isnot(None)
             ).limit(self.batch_size).all()
             
             discovered = 0
@@ -58,28 +61,43 @@ class PuuidExpander:
             # Process each placeholder
             for placeholder in placeholders:
                 try:
-                    # Get complete summoner data by PUUID
-                    summoner_data = await self.riot_api.get_summoner_by_puuid(
-                        placeholder.puuid, placeholder.region
+                    # Get account info using Riot ID
+                    account_data = await self.riot_api._request(
+                        "GET", 
+                        f"riot/account/v1/accounts/by-riot-id/{placeholder.game_name}/{placeholder.tag_line}", 
+                        region=placeholder.region,
+                        api_path="riot/account/v1"
                     )
                     
+                    if not account_data or 'puuid' not in account_data:
+                        logger.warning(f"Could not find account for {placeholder.game_name}#{placeholder.tag_line}")
+                        placeholder.processing_status = ProcessingStatus.FAILED
+                        db.commit()
+                        continue
+                    
+                    # Get summoner data by PUUID
+                    puuid = account_data.get('puuid')
+                    summoner_data = await self.riot_api.get_summoner_by_puuid(puuid, placeholder.region)
+                    
                     if not summoner_data:
-                        logger.warning(f"Could not retrieve data for summoner with PUUID: {placeholder.puuid}")
+                        logger.warning(f"Could not retrieve data for summoner with PUUID: {puuid}")
                         placeholder.processing_status = ProcessingStatus.FAILED
                         db.commit()
                         continue
                     
                     # Update with complete data
                     summoner = SummonerRepository.create_or_update(
-                        db, summoner_data, placeholder.region
+                        db, summoner_data, placeholder.region,
+                        game_name=placeholder.game_name,
+                        tag_line=placeholder.tag_line
                     )
                     
                     if summoner:
                         discovered += 1
-                        logger.debug(f"Updated summoner: {summoner.name} ({summoner.id})")
+                        logger.debug(f"Updated summoner: {summoner.game_name}#{summoner.tag_line} ({summoner.id})")
                 
                 except Exception as e:
-                    logger.error(f"Error discovering summoner with PUUID {placeholder.puuid}: {str(e)}")
+                    logger.error(f"Error discovering summoner {placeholder.game_name}#{placeholder.tag_line}: {str(e)}")
                     placeholder.processing_status = ProcessingStatus.FAILED
                     db.commit()
                 
@@ -131,12 +149,16 @@ class PuuidExpander:
                     
                     # For each participant, create relations to other participants
                     for p1 in participants:
+                        # Skip if no valid Riot ID
+                        if not p1.summoner or not p1.summoner.game_name or not p1.summoner.tag_line:
+                            continue
+                            
                         if p1.summoner.processing_status != ProcessingStatus.COMPLETED:
                             continue
                             
                         for p2 in participants:
-                            # Skip self-relations
-                            if p1.summoner_id == p2.summoner_id:
+                            # Skip self-relations and summoners without valid Riot ID
+                            if p1.summoner_id == p2.summoner_id or not p2.summoner or not p2.summoner.game_name or not p2.summoner.tag_line:
                                 continue
                             
                             # Add relation

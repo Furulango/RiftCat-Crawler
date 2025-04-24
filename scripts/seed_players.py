@@ -20,109 +20,123 @@ from app.core.logger import setup_logger
 # Setup logger
 logger = setup_logger("seed_players")
 
-# Seed data by region
+# Seed data by region (all with Riot ID format)
 SEED_PLAYERS = {
     "korea": [
         # Korea - LCK players
-        ("Faker", "kr"),
-        ("Hide on bush", "kr"),
-        ("T1 Gumayusi", "kr"),
-        ("T1 Keria", "kr"),
-        ("T1 Zeus", "kr"),
-        ("T1 Oner", "kr"),
-        ("GEN Chovy", "kr"),
-        ("GEN Ruler", "kr"),
-        ("DK Canyon", "kr"),
-        ("DK ShowMaker", "kr")
+        ("Faker#KR1", "kr"),
+        ("Hide on bush#KR1", "kr"),
+        ("T1 Gumayusi#KR1", "kr"),
+        ("T1 Keria#KR1", "kr"),
+        ("T1 Zeus#KR1", "kr"),
+        ("T1 Oner#KR1", "kr"),
+        ("GEN Chovy#KR1", "kr"),
+        ("GEN Ruler#KR1", "kr"),
+        ("DK Canyon#KR1", "kr"),
+        ("DK ShowMaker#KR1", "kr")
     ],
     "na": [
         # North America - LCS players
-        ("TL CoreJJ", "na1"),
-        ("TL Bjergsen", "na1"),
-        ("C9 Blaber", "na1"),
-        ("C9 Berserker", "na1"),
-        ("100 Closer", "na1"),
-        ("TSM Spica", "na1"),
-        ("EG Inspired", "na1"),
-        ("EG Danny", "na1"),
-        ("EG Jojopyun", "na1"),
-        ("C9 Fudge", "na1")
+        ("TL CoreJJ#NA1", "na1"),
+        ("TL Bjergsen#NA1", "na1"),
+        ("C9 Blaber#NA1", "na1"),
+        ("C9 Berserker#NA1", "na1"),
+        ("100 Closer#NA1", "na1"),
+        ("TSM Spica#NA1", "na1"),
+        ("EG Inspired#NA1", "na1"),
+        ("EG Danny#NA1", "na1"),
+        ("EG Jojopyun#NA1", "na1"),
+        ("C9 Fudge#NA1", "na1")
     ],
     "europe": [
         # Europe - LEC players
-        ("G2 caPs", "euw1"),
-        ("G2 Jankos", "euw1"),
-        ("G2 BrokenBlade", "euw1"),
-        ("FNC Upset", "euw1"),
-        ("FNC Humanoid", "euw1"),
-        ("RGE Larssen", "euw1"),
-        ("RGE Comp", "euw1"),
-        ("RGE Malrang", "euw1"),
-        ("MAD Elyoya", "euw1"),
-        ("MAD Nisqy", "euw1")
+        ("G2 caPs#EUW", "euw1"),
+        ("G2 Jankos#EUW", "euw1"),
+        ("G2 BrokenBlade#EUW", "euw1"),
+        ("FNC Upset#EUW", "euw1"),
+        ("FNC Humanoid#EUW", "euw1"),
+        ("RGE Larssen#EUW", "euw1"),
+        ("RGE Comp#EUW", "euw1"),
+        ("RGE Malrang#EUW", "euw1"),
+        ("MAD Elyoya#EUW", "euw1"),
+        ("MAD Nisqy#EUW", "euw1")
     ],
     "china": [
         # China - LPL players (may need account ID lookup)
-        ("JDG 369", "kr"),
-        ("JDG Knight", "kr"),
-        ("EDG Scout", "kr"),
-        ("WBG TheShy", "kr"),
-        ("RNG GALA", "kr"),
-        ("RNG Xiaohu", "kr"),
-        ("TES knight", "kr"),
-        ("TES JackeyLove", "kr"),
-        ("BLG Bin", "kr"),
-        ("BLG Uzi", "kr")
+        ("JDG 369#KR1", "kr"),
+        ("JDG Knight#KR1", "kr"),
+        ("EDG Scout#KR1", "kr"),
+        ("WBG TheShy#KR1", "kr"),
+        ("RNG GALA#KR1", "kr"),
+        ("RNG Xiaohu#KR1", "kr"),
+        ("TES knight#KR1", "kr"),
+        ("TES JackeyLove#KR1", "kr"),
+        ("BLG Bin#KR1", "kr"),
+        ("BLG Uzi#KR1", "kr")
     ],
     "challenger": {
-        # Top challenger players by region
-        "kr": ["Mika", "Untara", "T1 Zeus", "T1 Oner", "Quadra", "Agurin", "Kanavi", "Chasy", "Lucid", "Effort"],
-        "na1": ["General Sniper", "Sheiden", "5fire", "toucouille", "Tomio", "Stixxay", "Zeyzal", "Suna", "Copy", "Haeri"],
-        "euw1": ["Agurin", "Tynx", "Targamas", "Crownie", "Cinkrof", "Jackspektra", "Oscar", "Saken", "Nji", "Innaxe"],
-        "eun1": ["Dumbledoge", "Crownshot", "Qase", "Shlatan", "Odoamne", "HeaQ", "Carzzy", "Flakked", "Jeskla", "Comp"],
-        "br1": ["Titan", "Dynquedo", "Aegis", "RedBert", "Wizer", "Route", "Envy", "Goot", "Bounce", "Damage"],
-        "jp1": ["Ceros", "Yutapon", "Evi", "Steal", "Aria", "Gaeng", "Paz", "Taka", "Yoshi", "Blank"],
-        "la1": ["SeiyaLoL", "Jauny", "Acce", "Aloned", "Straight", "Kz", "Fix", "Maho", "Leza", "Mantarraya"]
+        # Top challenger players by region with taglines
+        "kr": ["Mika#KR1", "Untara#KR1", "T1 Zeus#KR1", "T1 Oner#KR1", "Quadra#KR1", "Agurin#KR1", "Kanavi#KR1", "Chasy#KR1", "Lucid#KR1", "Effort#KR1"],
+        "na1": ["General Sniper#NA1", "Sheiden#NA1", "5fire#NA1", "toucouille#NA1", "Tomio#NA1", "Stixxay#NA1", "Zeyzal#NA1", "Suna#NA1", "Copy#NA1", "Haeri#NA1"],
+        "euw1": ["Agurin#EUW", "Tynx#EUW", "Targamas#EUW", "Crownie#EUW", "Cinkrof#EUW", "Jackspektra#EUW", "Oscar#EUW", "Saken#EUW", "Nji#EUW", "Innaxe#EUW"],
+        "eun1": ["Dumbledoge#EUN", "Crownshot#EUN", "Qase#EUN", "Shlatan#EUN", "Odoamne#EUN", "HeaQ#EUN", "Carzzy#EUN", "Flakked#EUN", "Jeskla#EUN", "Comp#EUN"],
+        "br1": ["Titan#BR1", "Dynquedo#BR1", "Aegis#BR1", "RedBert#BR1", "Wizer#BR1", "Route#BR1", "Envy#BR1", "Goot#BR1", "Bounce#BR1", "Damage#BR1"],
+        "jp1": ["Ceros#JP1", "Yutapon#JP1", "Evi#JP1", "Steal#JP1", "Aria#JP1", "Gaeng#JP1", "Paz#JP1", "Taka#JP1", "Yoshi#JP1", "Blank#JP1"],
+        "la1": ["SeiyaLoL#LA1", "Jauny#LA1", "Acce#LA1", "Aloned#LA1", "Straight#LA1", "Kz#LA1", "Fix#LA1", "Maho#LA1", "Leza#LA1", "Mantarraya#LA1"]
     }
 }
 
 
-async def add_seed_player(api: RiotAPI, name: str, region: str) -> bool:
+async def add_seed_player(api: RiotAPI, name_with_tag: str, region: str) -> bool:
     """Add a seed player to the database.
     
     Args:
         api: RiotAPI instance
-        name: Summoner name
+        name_with_tag: Summoner name with tag (format: "name#tag")
         region: Region code
         
     Returns:
         True if successful
     """
     try:
-        logger.info(f"Adding seed player: {name} ({region})")
+        # Verificar que el formato sea correcto
+        if '#' not in name_with_tag:
+            logger.error(f"Invalid summoner format: {name_with_tag}. Must use 'name#tag' format.")
+            return False
+            
+        logger.info(f"Adding seed player: {name_with_tag} ({region})")
         
-        # Get summoner data from API
-        summoner_data = await api.get_summoner_by_name(name, region)
+        # Split name and tag
+        game_name, tag_line = name_with_tag.split("#", 1)
+        
+        # Get summoner data from API using Riot ID
+        summoner_data = await api.get_summoner_by_name_tag(game_name, tag_line, region)
+        
         if not summoner_data:
-            logger.warning(f"Summoner not found: {name} ({region})")
+            logger.warning(f"Summoner not found: {name_with_tag} ({region})")
             return False
         
         # Add to database
         db = SessionLocal()
         try:
-            summoner = SummonerRepository.create_or_update(db, summoner_data, region)
+            # Create with Riot ID
+            summoner = SummonerRepository.create_or_update(
+                db, summoner_data, region, game_name=game_name, tag_line=tag_line
+            )
+                
             if not summoner:
-                logger.error(f"Failed to save summoner: {name}")
+                logger.error(f"Failed to save summoner: {name_with_tag}")
                 return False
             
-            logger.info(f"Added seed player: {summoner.name} ({summoner.id})")
+            display_name = f"{summoner.game_name}#{summoner.tag_line}"
+            logger.info(f"Added seed player: {display_name} ({summoner.id})")
             return True
         
         finally:
             db.close()
     
     except Exception as e:
-        logger.error(f"Error adding seed player {name}: {str(e)}")
+        logger.error(f"Error adding seed player {name_with_tag}: {str(e)}")
         return False
 
 
@@ -163,6 +177,10 @@ async def seed_players(category: str, regions: List[str] = None, limit: int = No
                         players = players[:limit]
                     
                     for name in players:
+                        # Verificar formato Riot ID
+                        if '#' not in name:
+                            logger.warning(f"Skipping player {name} - missing Riot ID format")
+                            continue
                         players_to_add.append((name, region))
         
         elif category in SEED_PLAYERS:
