@@ -1,7 +1,3 @@
-Perfecto, aquí tienes una descripción completa del proyecto **RiftCat** que puedes usar en tu `README.md`, documentación o para futuros prompts:
-
----
-
 ### 🧠 Proyecto: **RiftCat**
 
 **RiftCat** es una infraestructura escalable diseñada para la recolección masiva e inteligente de datos de partidas de *League of Legends*, usando la API oficial de Riot. El sistema está pensado para operar de forma autónoma, viral y distribuida, explorando de manera progresiva todo el ecosistema de invocadores a partir de nodos semilla.
