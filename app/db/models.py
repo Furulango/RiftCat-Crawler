@@ -57,6 +57,10 @@ class Summoner(Base):
     revision_date = Column(Integer)
     summoner_level = Column(Integer)
     
+    # Riot ID info
+    game_name = Column(String(128))  # Parte del nombre en el Riot ID
+    tag_line = Column(String(32))    # Parte del tag en el Riot ID
+    
     # Region info
     region = Column(String(4))
     
@@ -79,7 +83,8 @@ class Summoner(Base):
     )
     
     def __repr__(self) -> str:
-        return f"<Summoner(name='{self.name}', region='{self.region}', status='{self.processing_status}')>"
+        riot_id = f"{self.game_name}#{self.tag_line}" if self.game_name and self.tag_line else self.name
+        return f"<Summoner(name='{riot_id}', region='{self.region}', status='{self.processing_status}')>"
 
 
 class Match(Base):

@@ -22,8 +22,8 @@ class SummonerRepository:
         db: Session, 
         summoner_data: Dict[str, Any], 
         region: str,
-        game_name: str,
-        tag_line: str
+        game_name: Optional[str] = None,
+        tag_line: Optional[str] = None
     ) -> Optional[Summoner]:
         """Create or update a summoner.
         
@@ -48,8 +48,15 @@ class SummonerRepository:
                         setattr(summoner, key, value)
                 
                 # Actualizar campos de Riot ID
-                summoner.game_name = summoner_data.get('gameName', game_name)
-                summoner.tag_line = summoner_data.get('tagLine', tag_line)
+                if game_name is not None:
+                    summoner.game_name = game_name
+                elif summoner_data.get('gameName'):
+                    summoner.game_name = summoner_data.get('gameName')
+                    
+                if tag_line is not None:
+                    summoner.tag_line = tag_line
+                elif summoner_data.get('tagLine'):
+                    summoner.tag_line = summoner_data.get('tagLine')
                 
                 summoner.region = region
                 summoner.last_updated = datetime.utcnow()
@@ -63,8 +70,8 @@ class SummonerRepository:
                     profile_icon_id=summoner_data.get('profileIconId'),
                     revision_date=summoner_data.get('revisionDate'),
                     summoner_level=summoner_data.get('summonerLevel'),
-                    game_name=summoner_data.get('gameName', game_name),
-                    tag_line=summoner_data.get('tagLine', tag_line),
+                    game_name=game_name or summoner_data.get('gameName'),
+                    tag_line=tag_line or summoner_data.get('tagLine'),
                     region=region,
                     processing_status=ProcessingStatus.PENDING,
                     processing_depth=0,
@@ -95,6 +102,29 @@ class SummonerRepository:
         return db.query(Summoner).filter(Summoner.puuid == puuid).first()
     
     @staticmethod
+    def get_by_riot_id(db: Session, game_name: str, tag_line: str, region: Optional[str] = None) -> Optional[Summoner]:
+        """Get a summoner by Riot ID components.
+        
+        Args:
+            db: Database session
+            game_name: Game name
+            tag_line: Tag line
+            region: Optional region filter
+            
+        Returns:
+            Summoner if found, None otherwise
+        """
+        query = db.query(Summoner).filter(
+            Summoner.game_name == game_name,
+            Summoner.tag_line == tag_line
+        )
+        
+        if region:
+            query = query.filter(Summoner.region == region)
+            
+        return query.first()
+    
+    @staticmethod
     def get_by_name_and_region(db: Session, name: str, region: str) -> Optional[Summoner]:
         """Get a summoner by name and region.
         
@@ -112,28 +142,7 @@ class SummonerRepository:
             return None
             
         game_name, tag_line = name.split('#', 1)
-        return db.query(Summoner).filter(
-            Summoner.game_name == game_name,
-            Summoner.tag_line == tag_line,
-            Summoner.region == region
-        ).first()
-    
-    @staticmethod
-    def get_by_riot_id(db: Session, game_name: str, tag_line: str) -> Optional[Summoner]:
-        """Get a summoner by Riot ID.
-        
-        Args:
-            db: Database session
-            game_name: Game name
-            tag_line: Tag line
-            
-        Returns:
-            Summoner if found, None otherwise
-        """
-        return db.query(Summoner).filter(
-            Summoner.game_name == game_name,
-            Summoner.tag_line == tag_line
-        ).first()
+        return SummonerRepository.get_by_riot_id(db, game_name, tag_line, region)
     
     @staticmethod
     def get_pending_summoners(
@@ -522,7 +531,7 @@ class MatchRepository:
         """
         return db.query(Match).join(MatchSummoner).filter(
             MatchSummoner.summoner_id == summoner_id
-        ).order_by(Match.game_end_timestamp.desc()).limit(limit).all()
+        ).order_by(Match.game_creation.desc()).limit(limit).all()
 
 
 class CrawlerStateRepository:

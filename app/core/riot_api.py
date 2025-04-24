@@ -259,6 +259,57 @@ class RiotAPI:
     
     # ========== Methods for Specific Endpoints ==========
     
+    async def get_account_by_puuid(self, puuid: str, region: Optional[str] = None) -> Dict[str, Any]:
+        """Gets account data by PUUID.
+        
+        Args:
+            puuid: Player's PUUID
+            region: Region code
+            
+        Returns:
+            Account data
+        """
+        endpoint = f"riot/account/v1/accounts/by-puuid/{puuid}"
+        return await self._request("GET", endpoint, region=region, api_path="riot/account/v1")
+    
+    async def get_account_by_riot_id(
+        self, 
+        game_name: str, 
+        tag_line: str, 
+        region: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Gets account data by Riot ID (game name and tag line).
+        
+        Args:
+            game_name: Player's game name
+            tag_line: Player's tag line
+            region: Region code
+            
+        Returns:
+            Account data
+        """
+        endpoint = f"riot/account/v1/accounts/by-riot-id/{game_name}/{tag_line}"
+        return await self._request("GET", endpoint, region=region, api_path="riot/account/v1")
+    
+    async def get_active_shard(
+        self, 
+        game: str, 
+        puuid: str, 
+        region: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Gets active shard for a player.
+        
+        Args:
+            game: Game code (e.g., 'val', 'lor')
+            puuid: Player's PUUID
+            region: Region code
+            
+        Returns:
+            Active shard data
+        """
+        endpoint = f"riot/account/v1/active-shards/by-game/{game}/by-puuid/{puuid}"
+        return await self._request("GET", endpoint, region=region, api_path="riot/account/v1")
+    
     async def get_summoner_by_name_tag(
         self, 
         game_name: str, 
@@ -269,15 +320,14 @@ class RiotAPI:
         
         Args:
             game_name: Summoner's game name
-            tag_line: Summoner's tag line (without #)
+            tag_line: Summoner's tag line
             region: Region code
             
         Returns:
             Summoner data
         """
-        # First get the PUUID using the Riot Account API
-        endpoint = f"riot/account/v1/accounts/by-riot-id/{game_name}/{tag_line}"
-        account_data = await self._request("GET", endpoint, region=region, api_path="riot/account/v1")
+        # First get the PUUID using the Account API
+        account_data = await self.get_account_by_riot_id(game_name, tag_line, region)
         
         if not account_data or 'puuid' not in account_data:
             logger.warning(f"Could not find account for {game_name}#{tag_line}")
@@ -298,13 +348,13 @@ class RiotAPI:
         """Gets summoner data by name (DEPRECATED - use get_summoner_by_name_tag).
         
         Args:
-            summoner_name: Summoner's name
+            summoner_name: Summoner's name with tag (format: name#tag)
             region: Region code
             
         Returns:
             Summoner data
         """
-        # Reject if no tag is provided
+        # Validate format
         if '#' not in summoner_name:
             logger.error(f"Invalid summoner format: {summoner_name}. Must use 'name#tag' format.")
             return {}
