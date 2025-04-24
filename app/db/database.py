@@ -32,16 +32,25 @@ def init_db() -> None:
         # Import models to register them with Base
         from app.db.models import (
             Summoner, Match, MatchSummoner, MatchTimeline, 
-            CrawlerState, summoner_relations
+            CrawlerState, summoner_relations, ProcessingStatus, QueueType
         )
         
         # Create all tables
         Base.metadata.create_all(bind=engine)
-        logger.info("Database tables created successfully")
+        
+        # Verify tables were created
+        from sqlalchemy import inspect
+        inspector = inspect(engine)
+        tables = inspector.get_table_names()
+        logger.info(f"Database tables created successfully: {tables}")
+        
+        if not tables or len(tables) < 5:
+            logger.warning("Not all tables were created! Trying again...")
+            Base.metadata.create_all(bind=engine)
+            
     except Exception as e:
         logger.error(f"Database initialization failed: {str(e)}")
         raise
-
 
 def get_db() -> Generator[Session, None, None]:
     """Get a database session.

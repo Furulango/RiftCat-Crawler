@@ -5,7 +5,7 @@ services:
   api:
     build: .
     container_name: riftcat_api
-    command: uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --reload
+    command: bash -c "python -c 'from app.db.database import init_db; init_db()' && uvicorn app.api.main:app --host 0.0.0.0 --port 8000 --reload"
     volumes:
       - .:/app
       - ./data:/app/data
