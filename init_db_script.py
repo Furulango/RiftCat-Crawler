@@ -2,19 +2,19 @@ from sqlalchemy import create_engine
 from app.db.models import Base
 from app.core.logger import get_logger
 
-# Importar todos los modelos para que se registren con Base
+# Import all models so they are registered with Base
 from app.db.models import Summoner, Match, MatchSummoner, MatchTimeline, CrawlerState, summoner_relations, ProcessingStatus, QueueType
 
-# Crear logger
+# Create logger
 logger = get_logger(__name__)
 
-# URL directa para evitar problemas con variables de entorno
+# Direct URL to avoid issues with environment variables
 DATABASE_URL = 'postgresql://postgres:postgres@db:5432/riftcat'
 
 try:
-    # Crear motor y tablas
+    # Create engine and tables
     engine = create_engine(DATABASE_URL)
     Base.metadata.create_all(bind=engine)
-    print('¡Tablas creadas exitosamente!')
+    print('Tables created successfully!')
 except Exception as e:
-    print(f'Error al crear tablas: {str(e)}')
+    print(f'Error creating tables: {str(e)}')
