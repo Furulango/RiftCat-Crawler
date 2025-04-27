@@ -1,6 +1,6 @@
 # 📋 RiftCat - ToDo
 
-## 📦 26-04-2025 - Enhancement Tasks
+## 📦 26-04-2025 - Tasks
 
 ### 🧪 Tests
 - [ ] API Individual
