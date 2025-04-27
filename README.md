@@ -1,65 +1,63 @@
-### 🧠 Proyecto: **RiftCat**
 
-**RiftCat** es una infraestructura escalable diseñada para la recolección masiva e inteligente de datos de partidas de *League of Legends*, usando la API oficial de Riot. El sistema está pensado para operar de forma autónoma, viral y distribuida, explorando de manera progresiva todo el ecosistema de invocadores a partir de nodos semilla.
+### 🧠 Project: **RiftCat**
 
----
-
-### 🎯 Objetivos del Proyecto
-
-- Construir un **crawler inteligente y viral** que expanda su alcance entre perfiles conectados por partidas.
-- Crear un **grafo dinámico de invocadores**, persistente y actualizable.
-- Recolectar, filtrar y almacenar datos relevantes de partidas y jugadores.
-- Integrar esta solución como un módulo en un futuro sistema avanzado de análisis tipo *coach IA* para LoL.
+**RiftCat** is a next-generation, scalable infrastructure engineered for the intelligent and large-scale acquisition of *League of Legends* match data, leveraging Riot’s official API. Designed for autonomous, viral, and distributed operation, RiftCat systematically explores the summoner ecosystem, expanding from initial seed nodes.
 
 ---
 
-### ⚙️ Tecnologías
+### 🎯 Project Objectives
 
-- **Lenguaje**: Python
-- **API**: Riot Games Developer API
-- **Web framework**: FastAPI
-- **Base de datos**: PostgreSQL
+- Develop a **smart viral crawler** that systematically expands across interconnected player profiles.
+- Construct a **persistent, dynamic summoner graph** capable of continuous evolution.
+- Capture, filter, and store high-value data on matches and players.
+- Integrate RiftCat as a core module within a future, advanced *AI-powered coaching* platform for LoL.
+
+---
+
+### ⚙️ Technology Stack
+
+- **Programming Language**: Python
+- **API Integration**: Riot Games Developer API
+- **Web Framework**: FastAPI
+- **Database**: PostgreSQL
 - **ORM**: SQLAlchemy
-- **Cola de tareas**: Celery + Redis
-- **Ejecución distribuida**: Enrutamiento viral a través de un crawler programado
-- **Infraestructura**: Docker y docker-compose
+- **Task Management**: Celery + Redis
+- **Distributed Crawling**: Viral routing via custom crawler algorithms
+- **Infrastructure**: Docker and docker-compose
 
 ---
 
-### 📁 Arquitectura de Carpetas
+### 📁 Project Structure
 
 ```bash
 RiftCat/
 │
 ├── app/
-│   ├── core/           # Configuración, logs, conexión a API
-│   ├── crawler/        # Algoritmo viral, expansión del grafo
-│   ├── workers/        # Tareas asincrónicas para recolectar partidas
-│   ├── db/             # Modelos ORM, persistencia y conexión
-│   └── api/            # FastAPI para exponer endpoints del sistema
+│   ├── core/           # Configuration, logging, and API access
+│   ├── crawler/        # Viral exploration algorithms, graph growth
+│   ├── workers/        # Asynchronous match retrieval tasks
+│   ├── db/             # ORM models and database management
+│   └── api/            # FastAPI endpoints for external access
 │
-├── scripts/            # Utilidades y scripts de prueba
-├── data/               # Datos descargados (match JSON, logs, etc.)
-├── tests/              # Pruebas automatizadas
+├── scripts/            # Utilities and testing tools
+├── data/               # Collected match JSON, logs, and metadata
+├── tests/              # Automated testing suite
 │
-├── .env                # Variables de entorno y credenciales
-├── requirements.txt    # Dependencias
+├── .env                # Environment variables and secure credentials
+├── requirements.txt    # Dependency management
 ├── Dockerfile
 ├── docker-compose.yml
 └── README.md
 ```
-📄 [Ver arquitectura del sistema](docs/README_ARCHITECTURE.md)
+📄 [View System Architecture](docs/README_ARCHITECTURE.md)
 
-![Arquitectura del Sistema](docs/architecture.png)
-
-
----
-
-### 🧩 Características Clave
-
-- **Crawleo viral**: El sistema explora nuevos perfiles automáticamente a través de las partidas recolectadas.
-- **Expansión controlada**: Incluye filtros de calidad para evitar ruido y priorizar partidas útiles.
-- **Diseño modular**: Cada componente (crawler, workers, persistencia, API) puede escalarse por separado.
-- **Alta escalabilidad**: Compatible con arquitecturas distribuidas, pensado para operación continua.
+![System Architecture](docs/architecture.png)
 
 ---
+
+### 🧩 Key Features
+
+- **Autonomous Viral Crawling**: Continuously discovers new player profiles through match network traversal.
+- **Selective Expansion**: Applies intelligent filters to prioritize high-quality, strategic data.
+- **Modular and Scalable**: Every component (crawler, workers, persistence, API) is independently scalable for maximum flexibility.
+- **Built for Growth**: Optimized for distributed deployment and continuous, high-volume data operations.
