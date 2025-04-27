@@ -47,7 +47,7 @@ class SummonerRepository:
                     if hasattr(summoner, key) and key not in ['gameName', 'tagLine']:
                         setattr(summoner, key, value)
                 
-                # Actualizar campos de Riot ID
+                # Update Riot ID fields
                 if game_name is not None:
                     summoner.game_name = game_name
                 elif summoner_data.get('gameName'):
@@ -136,7 +136,7 @@ class SummonerRepository:
         Returns:
             Summoner if found, None otherwise
         """
-        # Verificar que el formato sea correcto
+        # Verify that the format is correct
         if '#' not in name:
             logger.error(f"Invalid summoner format: {name}. Must use 'name#tag' format.")
             return None
@@ -163,7 +163,7 @@ class SummonerRepository:
         return db.query(Summoner).filter(
             Summoner.processing_status == ProcessingStatus.PENDING,
             Summoner.processing_depth <= max_depth,
-            # Asegurar que tengan Riot ID
+            # Ensure they have Riot ID
             Summoner.game_name.isnot(None),
             Summoner.tag_line.isnot(None)
         ).order_by(Summoner.processing_depth.asc()).limit(limit).all()
@@ -205,7 +205,7 @@ class SummonerRepository:
                 logger.warning(f"Summoner not found for status update: {summoner_id}")
                 return False
                 
-            # Verificar que el summoner tenga Riot ID
+            # Verify that the summoner has a Riot ID
             if not summoner.game_name or not summoner.tag_line:
                 logger.warning(f"Summoner {summoner_id} does not have a valid Riot ID")
                 return False
@@ -251,7 +251,7 @@ class SummonerRepository:
                 logger.warning(f"Cannot create relation: summoner not found ({source_id} -> {target_id})")
                 return False
                 
-            # Verificar que ambos tengan Riot ID
+            # Verify that both have Riot ID
             if not source.game_name or not source.tag_line:
                 logger.warning(f"Source summoner {source_id} does not have a valid Riot ID")
                 return False
@@ -270,353 +270,4 @@ class SummonerRepository:
         except SQLAlchemyError as e:
             db.rollback()
             logger.error(f"Error adding summoner relation: {str(e)}")
-            return False
-
-
-class MatchRepository:
-    """Repository for Match operations."""
-    
-    @staticmethod
-    def create_or_update(db: Session, match_data: Dict[str, Any]) -> Optional[Match]:
-        """Create or update a match.
-        
-        Args:
-            db: Database session
-            match_data: Match data from Riot API
-            
-        Returns:
-            Created or updated match
-        """
-        try:
-            # Extract match info
-            match_id = match_data.get('metadata', {}).get('matchId')
-            if not match_id:
-                logger.error("Match data does not contain a match ID")
-                return None
-            
-            # Check if match exists
-            match = db.query(Match).filter(Match.id == match_id).first()
-            
-            # Get match info
-            info = match_data.get('info', {})
-            queue_id = info.get('queueId', 0)
-            
-            # Map queue ID to queue type
-            queue_type = QueueType.OTHER
-            if queue_id == 400:
-                queue_type = QueueType.NORMAL_DRAFT
-            elif queue_id == 420:
-                queue_type = QueueType.RANKED_SOLO
-            elif queue_id == 440:
-                queue_type = QueueType.RANKED_FLEX
-            elif queue_id == 450:
-                queue_type = QueueType.ARAM
-            elif queue_id == 700:
-                queue_type = QueueType.CLASH
-            
-            if match:
-                # Update existing match
-                match.game_creation = info.get('gameCreation')
-                match.game_duration = info.get('gameDuration')
-                match.game_end_timestamp = info.get('gameEndTimestamp')
-                match.game_id = info.get('gameId')
-                match.game_mode = info.get('gameMode')
-                match.game_name = info.get('gameName')
-                match.game_type = info.get('gameType')
-                match.game_version = info.get('gameVersion')
-                match.platform_id = info.get('platformId')
-                match.queue_id = queue_id
-                match.queue_type = queue_type
-                match.tournament_code = info.get('tournamentCode')
-                match.teams = info.get('teams', [])
-                match.last_updated = datetime.utcnow()
-                match.processing_status = ProcessingStatus.COMPLETED
-            else:
-                # Create new match
-                match = Match(
-                    id=match_id,
-                    game_creation=info.get('gameCreation'),
-                    game_duration=info.get('gameDuration'),
-                    game_end_timestamp=info.get('gameEndTimestamp'),
-                    game_id=info.get('gameId'),
-                    game_mode=info.get('gameMode'),
-                    game_name=info.get('gameName'),
-                    game_type=info.get('gameType'),
-                    game_version=info.get('gameVersion'),
-                    platform_id=info.get('platformId'),
-                    queue_id=queue_id,
-                    queue_type=queue_type,
-                    tournament_code=info.get('tournamentCode'),
-                    teams=info.get('teams', []),
-                    processing_status=ProcessingStatus.COMPLETED
-                )
-                db.add(match)
-            
-            db.commit()
-            db.refresh(match)
-            
-            # Save participant data
-            participants = info.get('participants', [])
-            for participant in participants:
-                puuid = participant.get('puuid')
-                if not puuid:
-                    continue
-                
-                # Check for game name and tag in participant data
-                game_name = participant.get('riotIdGameName')
-                tag_line = participant.get('riotIdTagline')
-                
-                # Verificar que se tenga información de Riot ID
-                if not game_name or not tag_line:
-                    logger.warning(f"Participant in match {match_id} does not have valid Riot ID. Skipping.")
-                    continue
-                
-                # Get or create summoner (minimal info)
-                summoner = db.query(Summoner).filter(Summoner.puuid == puuid).first()
-                if not summoner:
-                    # Create placeholder summoner with required Riot ID info
-                    summoner = Summoner(
-                        id=participant.get('summonerId', f"placeholder_{puuid[:8]}"),
-                        puuid=puuid,
-                        account_id=participant.get('accountId', f"placeholder_{puuid[:8]}"),
-                        name=participant.get('summonerName', 'Unknown'),
-                        game_name=game_name,
-                        tag_line=tag_line,
-                        profile_icon_id=0,
-                        revision_date=0,
-                        summoner_level=0,
-                        region=match.platform_id[:4] if match.platform_id else 'na1',
-                        processing_status=ProcessingStatus.PENDING,
-                        processing_depth=0,
-                        matches_analyzed=0
-                    )
-                    db.add(summoner)
-                    db.flush()  # Get ID without committing
-                elif not summoner.game_name or not summoner.tag_line:
-                    # Update summoner with Riot ID if missing
-                    summoner.game_name = game_name
-                    summoner.tag_line = tag_line
-                
-                # Create or update match-summoner relationship
-                match_summoner = db.query(MatchSummoner).filter(
-                    MatchSummoner.match_id == match_id,
-                    MatchSummoner.summoner_id == summoner.id
-                ).first()
-                
-                # Extract stats without duplicating all fields
-                stats = {k: v for k, v in participant.items() if k not in [
-                    'championId', 'championName', 'championLevel', 'teamId',
-                    'teamPosition', 'role', 'kills', 'deaths', 'assists', 'win',
-                    'participantId', 'puuid', 'summonerId', 'summonerName',
-                    'riotIdGameName', 'riotIdTagline'
-                ]}
-                
-                if match_summoner:
-                    # Update existing relationship
-                    match_summoner.participant_id = participant.get('participantId')
-                    match_summoner.team_id = participant.get('teamId')
-                    match_summoner.champion_id = participant.get('championId')
-                    match_summoner.champion_name = participant.get('championName')
-                    match_summoner.champion_level = participant.get('championLevel')
-                    match_summoner.team_position = participant.get('teamPosition')
-                    match_summoner.role = participant.get('role')
-                    match_summoner.kills = participant.get('kills')
-                    match_summoner.deaths = participant.get('deaths')
-                    match_summoner.assists = participant.get('assists')
-                    match_summoner.win = participant.get('win')
-                    match_summoner.stats = stats
-                else:
-                    # Create new relationship
-                    match_summoner = MatchSummoner(
-                        match_id=match_id,
-                        summoner_id=summoner.id,
-                        participant_id=participant.get('participantId'),
-                        team_id=participant.get('teamId'),
-                        champion_id=participant.get('championId'),
-                        champion_name=participant.get('championName'),
-                        champion_level=participant.get('championLevel'),
-                        team_position=participant.get('teamPosition'),
-                        role=participant.get('role'),
-                        kills=participant.get('kills'),
-                        deaths=participant.get('deaths'),
-                        assists=participant.get('assists'),
-                        win=participant.get('win'),
-                        stats=stats
-                    )
-                    db.add(match_summoner)
-            
-            db.commit()
-            return match
-        
-        except SQLAlchemyError as e:
-            db.rollback()
-            logger.error(f"Error creating/updating match: {str(e)}")
-            return None
-    
-    @staticmethod
-    def save_timeline(db: Session, match_id: str, timeline_data: Dict[str, Any]) -> Optional[MatchTimeline]:
-        """Save match timeline data.
-        
-        Args:
-            db: Database session
-            match_id: Match ID
-            timeline_data: Timeline data from Riot API
-            
-        Returns:
-            Created or updated timeline
-        """
-        try:
-            # Check if match exists
-            match = db.query(Match).filter(Match.id == match_id).first()
-            if not match:
-                logger.error(f"Cannot save timeline: match not found ({match_id})")
-                return None
-            
-            # Check if timeline exists
-            timeline = db.query(MatchTimeline).filter(MatchTimeline.match_id == match_id).first()
-            
-            if timeline:
-                # Update existing timeline
-                timeline.timeline_metadata = timeline_data.get('metadata', {})
-                timeline.frames = timeline_data.get('info', {}).get('frames', [])
-            else:
-                # Create new timeline
-                timeline = MatchTimeline(
-                    match_id=match_id,
-                    timeline_metadata=timeline_data.get('metadata', {}),
-                    frames=timeline_data.get('info', {}).get('frames', [])
-                )
-                db.add(timeline)
-            
-            # Update match to mark timeline as fetched
-            match.is_timeline_fetched = True
-            
-            db.commit()
-            db.refresh(timeline)
-            return timeline
-        
-        except SQLAlchemyError as e:
-            db.rollback()
-            logger.error(f"Error saving match timeline: {str(e)}")
-            return None
-    
-    @staticmethod
-    def get_by_id(db: Session, match_id: str) -> Optional[Match]:
-        """Get a match by ID.
-        
-        Args:
-            db: Database session
-            match_id: Match ID
-            
-        Returns:
-            Match if found, None otherwise
-        """
-        return db.query(Match).filter(Match.id == match_id).first()
-    
-    @staticmethod
-    def get_matches_by_summoner(
-        db: Session,
-        summoner_id: str,
-        limit: int = 20
-    ) -> List[Match]:
-        """Get matches for a summoner.
-        
-        Args:
-            db: Database session
-            summoner_id: Summoner ID
-            limit: Maximum number of matches to fetch
-            
-        Returns:
-            List of matches
-        """
-        return db.query(Match).join(MatchSummoner).filter(
-            MatchSummoner.summoner_id == summoner_id
-        ).order_by(Match.game_creation.desc()).limit(limit).all()
-
-
-class CrawlerStateRepository:
-    """Repository for CrawlerState operations."""
-    
-    @staticmethod
-    def get_or_create(db: Session) -> CrawlerState:
-        """Get or create crawler state.
-        
-        Args:
-            db: Database session
-            
-        Returns:
-            Current crawler state
-        """
-        state = db.query(CrawlerState).first()
-        
-        if not state:
-            state = CrawlerState(
-                active=True,
-                total_summoners=0,
-                total_matches=0,
-                queue_size=0,
-                current_depth=0,
-                status_message="Crawler initialized"
-            )
-            db.add(state)
-            db.commit()
-            db.refresh(state)
-        
-        return state
-    
-    @staticmethod
-    def update_metrics(
-        db: Session,
-        total_summoners: Optional[int] = None,
-        total_matches: Optional[int] = None,
-        queue_size: Optional[int] = None,
-        current_depth: Optional[int] = None,
-        active: Optional[bool] = None,
-        status_message: Optional[str] = None
-    ) -> bool:
-        """Update crawler state metrics.
-        
-        Args:
-            db: Database session
-            total_summoners: Total number of summoners
-            total_matches: Total number of matches
-            queue_size: Current queue size
-            current_depth: Current depth level
-            active: Whether the crawler is active
-            status_message: Status message
-            
-        Returns:
-            True if successful, False otherwise
-        """
-        try:
-            state = CrawlerStateRepository.get_or_create(db)
-            
-            # Update provided fields
-            if total_summoners is not None:
-                state.total_summoners = total_summoners
-            
-            if total_matches is not None:
-                state.total_matches = total_matches
-            
-            if queue_size is not None:
-                state.queue_size = queue_size
-            
-            if current_depth is not None:
-                state.current_depth = current_depth
-            
-            if active is not None:
-                state.active = active
-            
-            if status_message is not None:
-                state.status_message = status_message
-            
-            # Always update last activity
-            state.last_activity = datetime.utcnow()
-            
-            db.commit()
-            return True
-        
-        except SQLAlchemyError as e:
-            db.rollback()
-            logger.error(f"Error updating crawler state: {str(e)}")
             return False

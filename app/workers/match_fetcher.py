@@ -67,6 +67,7 @@ class MatchFetcher:
             
             # Fetch match IDs for the summoner
             start_time = int((datetime.now() - timedelta(days=30)).timestamp())
+            logger.info(f"Searching matches since: {datetime.fromtimestamp(start_time).isoformat()} (timestamp: {start_time})")
             match_ids = await self.riot_api.get_match_ids_by_puuid(
                 puuid=summoner.puuid,
                 region=region,

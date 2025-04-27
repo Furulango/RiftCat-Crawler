@@ -394,7 +394,8 @@ class RiotAPI:
             Lista con pares de (ID de partida, tipo de cola)
         """
         matches_by_type = []
-        start_time = int((datetime.now() - timedelta(days=days_back)).timestamp())
+        three_months_ago = datetime.now() - timedelta(days=90)
+        start_time = int(three_months_ago.timestamp())
         
         # Intentar obtener partidas para cada tipo de cola ranked
         for queue_id, queue_name in RANKED_QUEUE_TYPES.items():

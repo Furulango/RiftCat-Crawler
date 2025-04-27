@@ -47,11 +47,11 @@ class PuuidExpander:
         logger.info("Discovering new summoners from matches")
         
         try:
-            # Encontrar invocadores placeholder que necesitan completar su información
+            # Find placeholder summoners that need to complete their information
             placeholders = db.query(Summoner).filter(
                 Summoner.summoner_level == 0,  # Placeholder indication
                 Summoner.processing_status == ProcessingStatus.PENDING,
-                # Asegurarse de que tengan información de Riot ID
+                # Ensure they have Riot ID information
                 Summoner.game_name.isnot(None),
                 Summoner.tag_line.isnot(None)
             ).limit(self.batch_size).all()
@@ -61,23 +61,41 @@ class PuuidExpander:
             # Process each placeholder
             for placeholder in placeholders:
                 try:
+                    # Determine correct region for API requests
+                    account_region = placeholder.region
+                    if placeholder.region.upper() in ["KR", "ASIA"]:
+                        account_region = "asia"  # Use Asia region for Korean players in account API
+                    elif placeholder.region.upper().startswith("NA"):
+                        account_region = "americas"
+                    elif placeholder.region.upper().startswith("EU"):
+                        account_region = "europe"
+                    
+                    logger.info(f"Fetching account data for {placeholder.game_name}#{placeholder.tag_line} using region {account_region} (original: {placeholder.region})")
+                    
                     # Get account info using Riot ID
                     account_data = await self.riot_api._request(
                         "GET", 
                         f"riot/account/v1/accounts/by-riot-id/{placeholder.game_name}/{placeholder.tag_line}", 
-                        region=placeholder.region,
+                        region=account_region,
                         api_path="riot/account/v1"
                     )
                     
                     if not account_data or 'puuid' not in account_data:
-                        logger.warning(f"Could not find account for {placeholder.game_name}#{placeholder.tag_line}")
+                        logger.warning(f"Could not find account for {placeholder.game_name}#{placeholder.tag_line}: {account_data}")
                         placeholder.processing_status = ProcessingStatus.FAILED
                         db.commit()
                         continue
                     
                     # Get summoner data by PUUID
                     puuid = account_data.get('puuid')
-                    summoner_data = await self.riot_api.get_summoner_by_puuid(puuid, placeholder.region)
+                    
+                    # Determine correct region for summoner API
+                    summoner_region = placeholder.region
+                    if placeholder.region.upper() in ["ASIA", "KR1"]:
+                        summoner_region = "kr"
+                    
+                    logger.info(f"Fetching summoner data for PUUID {puuid} using region {summoner_region}")
+                    summoner_data = await self.riot_api.get_summoner_by_puuid(puuid, summoner_region)
                     
                     if not summoner_data:
                         logger.warning(f"Could not retrieve data for summoner with PUUID: {puuid}")
@@ -87,14 +105,14 @@ class PuuidExpander:
                     
                     # Update with complete data
                     summoner = SummonerRepository.create_or_update(
-                        db, summoner_data, placeholder.region,
+                        db, summoner_data, summoner_region,
                         game_name=placeholder.game_name,
                         tag_line=placeholder.tag_line
                     )
                     
                     if summoner:
                         discovered += 1
-                        logger.debug(f"Updated summoner: {summoner.game_name}#{summoner.tag_line} ({summoner.id})")
+                        logger.info(f"Updated summoner: {summoner.game_name}#{summoner.tag_line} ({summoner.id})")
                 
                 except Exception as e:
                     logger.error(f"Error discovering summoner {placeholder.game_name}#{placeholder.tag_line}: {str(e)}")
@@ -106,7 +124,7 @@ class PuuidExpander:
             
             logger.info(f"Discovered {discovered} new summoners")
             return discovered
-        
+    
         except Exception as e:
             logger.error(f"Error in discover_new_summoners: {str(e)}")
             return 0
